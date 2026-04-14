@@ -124,7 +124,13 @@ func main() {
 	// Load applications
 	apps := data.ParseApplications(careerOpsPath)
 	if apps == nil {
-		fmt.Fprintf(os.Stderr, "Error: could not find applications.md in %s or %s/data/\n", careerOpsPath, careerOpsPath)
+		if root, ok := data.FindCareerOpsRoot(careerOpsPath); ok {
+			careerOpsPath = root
+			apps = data.ParseApplications(careerOpsPath)
+		}
+	}
+	if apps == nil {
+		fmt.Fprintf(os.Stderr, "Error: could not find applications.md in %s or %s/data/ (searched upward from cwd)\n", *pathFlag, *pathFlag)
 		os.Exit(1)
 	}
 

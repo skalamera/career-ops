@@ -30,19 +30,11 @@ The skill applies with EQUAL rigor to ALL target roles. None is primary or secon
 
 | Archetype | Thematic axes | What they buy |
 |-----------|---------------|---------------|
-| **AI Platform / LLMOps Engineer** | Evaluation, observability, reliability, pipelines | Someone who puts AI in production with metrics |
-| **Agentic Workflows / Automation** | HITL, tooling, orchestration, multi-agent | Someone who builds reliable agent systems |
-| **Technical AI Product Manager** | GenAI/Agents, PRDs, discovery, delivery | Someone who translates business to AI product |
-| **AI Solutions Architect** | Hyperautomation, enterprise, integrations | Someone who designs end-to-end AI architectures |
-| **AI Forward Deployed Engineer** | Client-facing, fast delivery, prototyping | Someone who delivers AI solutions to clients fast |
-| **AI Transformation Lead** | Change management, adoption, org enablement | Someone who leads AI transformation in an org |
-
-<!-- [CUSTOMIZE] Edit the archetypes above to match YOUR target roles.
-     For example, if you're a backend engineer, replace with:
-     - Senior Backend Engineer
-     - Staff Platform Engineer
-     - Engineering Manager
-     etc. -->
+| **Technical Support Manager** | Team leadership, CSAT, SLA ownership, TSE coaching | Someone who runs a high-performing support team with data and discipline |
+| **Support Engineering Manager** | API/integration support, escalation management, technical depth | Someone who bridges support and engineering with technical credibility |
+| **Support Operations Manager** | Tooling, workflows, automation, forecasting, metrics | Someone who scales support ops through systems and AI-powered tooling |
+| **Technical Support Director** | Org design, cross-functional strategy, multi-region leadership | Someone who leads support at the organizational level with exec presence |
+| **Support Engineering Director** | Engineering partnerships, escalation strategy, platform support | Someone who owns the technical support function at scale |
 
 ### Adaptive Framing by Archetype
 
@@ -50,38 +42,29 @@ The skill applies with EQUAL rigor to ALL target roles. None is primary or secon
 
 | If the role is... | Emphasize about the candidate... | Proof point sources |
 |-------------------|----------------------------------|---------------------|
-| Platform / LLMOps | Production systems builder, observability, evals, closed-loop | article-digest.md + cv.md |
-| Agentic / Automation | Multi-agent orchestration, HITL, reliability, cost | article-digest.md + cv.md |
-| Technical AI PM | Product discovery, PRDs, metrics, stakeholder mgmt | cv.md + article-digest.md |
-| Solutions Architect | System design, integrations, enterprise-ready | article-digest.md + cv.md |
-| Forward Deployed Engineer | Fast delivery, client-facing, prototype to prod | cv.md + article-digest.md |
-| AI Transformation Lead | Change management, team enablement, adoption | cv.md + article-digest.md |
-
-<!-- [CUSTOMIZE] Map YOUR specific projects/articles to each archetype above -->
+| Technical Support Manager | Team leadership, player-coach style, CSAT ownership, hybrid team management | cv.md (Sigma, Benchmark) |
+| Support Engineering Manager | Technical depth (APIs, integrations, SQL), escalation ownership, eng partnership | cv.md (Sigma, Lytx) |
+| Support Operations Manager | Tooling automation, forecasting, Power BI/Python, workflow design, Jedana | cv.md + Jedana project |
+| Technical Support Director | Org design, multi-team leadership, cross-functional strategy, exec communication | cv.md (Benchmark 20-person team) |
+| Support Engineering Director | Platform support at scale, incident command, SEV-0/1 leadership, technical credibility | cv.md (Sigma, Lytx) |
 
 ### Exit Narrative (use in ALL framings)
 
-<!-- [CUSTOMIZE] Replace with YOUR narrative. Examples:
-     - "Built and sold my SaaS after 5 years. Now focused on applied AI at scale."
-     - "Led engineering at a Series B startup through 10x growth. Now seeking my next challenge."
-     - "Transitioned from consulting to building product. Looking for high-ownership roles."
-     Read from config/profile.yml → narrative.exit_story -->
-
 Use the candidate's exit story from `config/profile.yml` to frame ALL content:
 - **In PDF Summaries:** Bridge from past to future -- "Now applying the same [skill] to [JD domain]."
-- **In STAR stories:** Reference proof points from article-digest.md
-- **In Draft Answers (Section G):** The transition narrative should appear in the first response.
-- **When the JD asks for "entrepreneurial", "ownership", "builder", "end-to-end":** This is the #1 differentiator. Increase match weight.
+- **In STAR stories:** Reference proof points from cv.md (Sigma, Benchmark, Jedana)
+- **In Draft Answers (Section G):** The leadership + builder angle should appear in the first response.
+- **When the JD asks for "player-coach", "data-driven", "scalable", "cross-functional":** This is the #1 differentiator. Increase match weight.
 
 ### Cross-cutting Advantage
 
-Frame profile as **"Technical builder with real-world proof"** that adapts framing to the role:
-- For PM: "builder who reduces uncertainty with prototypes then productionizes with discipline"
-- For FDE: "builder who delivers fast with observability and metrics from day 1"
-- For SA: "builder who designs end-to-end systems with real integration experience"
-- For LLMOps: "builder who puts AI in production with closed-loop quality systems"
+Frame profile as **"Support leader who builds the systems, not just manages them"** that adapts framing to the role:
+- For Support Manager: "leader who raises CSAT and team performance through coaching and tooling"
+- For Support Ops: "operator who automates workflows and builds forecasting models others rely on"
+- For Support Engineering Manager: "technical lead who owns complex escalations and partners with eng credibly"
+- For Director: "org builder who scales support with AI tooling, data, and cross-functional influence"
 
-Convert "builder" into a professional signal, not a "hobby maker". Real proof points make this credible.
+The Jedana project (AI-powered support analytics, built independently) is a strong differentiator — it shows Stephen doesn't just manage support, he builds tools for it.
 
 ### Portfolio as Proof Point (use in high-value applications)
 

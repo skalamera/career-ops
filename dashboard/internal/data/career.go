@@ -24,6 +24,39 @@ var (
 	reBatchID        = regexp.MustCompile(`(?m)^\*\*Batch ID:\*\*\s*(\d+)`)
 )
 
+// applicationsMDExists reports whether careerOpsPath contains applications.md at the root or under data/.
+func applicationsMDExists(careerOpsPath string) bool {
+	for _, name := range []string{
+		filepath.Join(careerOpsPath, "applications.md"),
+		filepath.Join(careerOpsPath, "data", "applications.md"),
+	} {
+		if st, err := os.Stat(name); err == nil && !st.IsDir() {
+			return true
+		}
+	}
+	return false
+}
+
+// FindCareerOpsRoot walks upward from startDir until it finds a directory containing applications.md.
+// Use this when the binary is run from a subdirectory (e.g. dashboard/) with -path . .
+func FindCareerOpsRoot(startDir string) (string, bool) {
+	dir, err := filepath.Abs(startDir)
+	if err != nil {
+		return "", false
+	}
+	for {
+		if applicationsMDExists(dir) {
+			return dir, true
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			break
+		}
+		dir = parent
+	}
+	return "", false
+}
+
 // ParseApplications reads applications.md and returns parsed applications.
 // It tries both {path}/applications.md and {path}/data/applications.md for compatibility.
 func ParseApplications(careerOpsPath string) []model.CareerApplication {

@@ -107,9 +107,9 @@ This system is designed to be customized by YOU (Claude). When the user asks you
 | If the user... | Mode |
 |----------------|------|
 | Pastes JD or URL | auto-pipeline (evaluate + report + PDF + tracker) |
-| Asks to evaluate offer | `oferta` |
-| Asks to compare offers | `ofertas` |
-| Wants LinkedIn outreach | `contacto` |
+| Asks to evaluate offer | `offer` |
+| Asks to compare offers | `offers` |
+| Wants LinkedIn outreach | `contact` |
 | Asks for company research | `deep` |
 | Wants to generate CV/PDF | `pdf` |
 | Evaluates a course/cert | `training` |
