@@ -12,8 +12,11 @@ type CareerApplication struct {
 	HasPDF       bool
 	ReportPath   string
 	ReportNumber string
-	Notes        string
-	JobURL       string // URL of the original job posting
+	Notes          string
+	InterviewSlot  string // e.g. "04/16/2026, 9:15AM - 10:00AM ET" (America/New_York)
+	InterviewNotes string // Who you're meeting with this round (optional)
+	Likelihood     string // e.g. "45%" or "—"
+	JobURL         string // URL of the original job posting
 	// Enrichment (lazy loaded from report)
 	Archetype    string
 	TlDr         string

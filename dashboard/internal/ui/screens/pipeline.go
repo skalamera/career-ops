@@ -4,10 +4,13 @@ import (
 	"fmt"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/muesli/reflow/wordwrap"
 
 	"github.com/santifer/career-ops/dashboard/internal/data"
 	"github.com/santifer/career-ops/dashboard/internal/model"
@@ -62,8 +65,8 @@ const (
 	filterAll       = "all"
 	filterEvaluated = "evaluated"
 	filterApplied   = "applied"
-	filterInterview = "interview"
-	filterSkip      = "skip"
+	filterRounds = "rounds"
+	filterSkip   = "skip"
 	filterTop       = "top"
 )
 
@@ -76,17 +79,24 @@ var pipelineTabs = []pipelineTab{
 	{filterAll, "ALL"},
 	{filterEvaluated, "EVALUATED"},
 	{filterApplied, "APPLIED"},
-	{filterInterview, "INTERVIEW"},
+	{filterRounds, "ROUNDS"},
 	{filterTop, "TOP \u22654"},
 	{filterSkip, "SKIP"},
 }
 
 var sortCycle = []string{sortScore, sortDate, sortCompany, sortStatus}
 
-var statusOptions = []string{"Evaluated", "Applied", "Responded", "Interview", "Offer", "Rejected", "Discarded", "SKIP"}
+var statusOptions = []string{
+	"Evaluated", "Applied",
+	"Round 1", "Round 2", "Round 3", "Round 4", "Round 5",
+	"Offer", "Rejected", "Discarded", "SKIP",
+}
 
 // statusGroupOrder defines display order for grouped view.
-var statusGroupOrder = []string{"interview", "offer", "responded", "applied", "evaluated", "skip", "rejected", "discarded"}
+var statusGroupOrder = []string{
+	"offer", "round_5", "round_4", "round_3", "round_2", "round_1",
+	"applied", "evaluated", "skip", "rejected", "discarded",
+}
 
 // PipelineModel implements the career pipeline dashboard screen.
 type PipelineModel struct {
@@ -346,6 +356,10 @@ func (m *PipelineModel) applyFilterAndSort() {
 			if app.Score >= 4.0 && norm != "no_aplicar" {
 				filtered = append(filtered, app)
 			}
+		case filterRounds:
+			if isRoundStatus(norm) {
+				filtered = append(filtered, app)
+			}
 		default:
 			if norm == currentFilter {
 				filtered = append(filtered, app)
@@ -419,22 +433,20 @@ func (m *PipelineModel) adjustScroll() {
 }
 
 func (m PipelineModel) cursorLineEstimate() int {
-	if m.viewMode != "grouped" {
-		return m.cursor
-	}
-	// Account for group headers
 	line := 0
 	prevStatus := ""
 	for i, app := range m.filtered {
 		norm := data.NormalizeStatus(app.Status)
-		if norm != prevStatus {
-			line++ // group header
-			prevStatus = norm
+		if m.viewMode == "grouped" {
+			if norm != prevStatus {
+				line++
+				prevStatus = norm
+			}
 		}
 		if i == m.cursor {
 			return line
 		}
-		line++
+		line += len(m.pipelineAppVisualLines(app))
 	}
 	return line
 }
@@ -548,6 +560,10 @@ func (m PipelineModel) countForFilter(filter string) int {
 			if app.Score >= 4.0 && norm != "no_aplicar" {
 				count++
 			}
+		case filterRounds:
+			if isRoundStatus(norm) {
+				count++
+			}
 		default:
 			if norm == filter {
 				count++
@@ -555,6 +571,15 @@ func (m PipelineModel) countForFilter(filter string) int {
 		}
 	}
 	return count
+}
+
+func isRoundStatus(norm string) bool {
+	switch norm {
+	case "round_1", "round_2", "round_3", "round_4", "round_5":
+		return true
+	default:
+		return false
+	}
 }
 
 func (m PipelineModel) renderMetrics() string {
@@ -629,70 +654,184 @@ func (m PipelineModel) renderBody() string {
 	return strings.Join(lines, "\n")
 }
 
+// pipelineColumnWidths returns fixed column widths; role width depends on terminal width.
+func (m PipelineModel) pipelineColumnWidths() (scoreW, companyW, roleW, statusW, whenW, pastW, inoteW, compW, likeW int) {
+	const roleMax = 40
+	scoreW = 5
+	companyW = 16
+	statusW = 10
+	whenW = 28
+	pastW = 10
+	inoteW = 35
+	compW = 30
+	likeW = 6
+	fixed := scoreW + companyW + statusW + whenW + pastW + inoteW + compW + likeW + 16
+	roleW = m.width - fixed
+	if roleW < 8 {
+		roleW = 8
+	}
+	if roleW > roleMax {
+		roleW = roleMax
+	}
+	return
+}
+
+func wrapCell(s string, w int) []string {
+	if w < 1 {
+		w = 1
+	}
+	s = strings.ReplaceAll(s, "\r\n", "\n")
+	s = strings.ReplaceAll(s, "\r", "\n")
+	s = strings.ReplaceAll(s, "\n", " ")
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return []string{""}
+	}
+	wrapped := wordwrap.String(s, w)
+	lines := strings.Split(wrapped, "\n")
+	if len(lines) == 0 {
+		return []string{""}
+	}
+	return lines
+}
+
+func padLineSlice(lines []string, n int) []string {
+	out := make([]string, n)
+	for i := 0; i < n; i++ {
+		if i < len(lines) {
+			out[i] = lines[i]
+		} else {
+			out[i] = ""
+		}
+	}
+	return out
+}
+
+// pipelineAppVisualLines renders one application as one or more terminal lines (word-wrapped cells).
+func (m PipelineModel) pipelineAppVisualLines(app model.CareerApplication) []string {
+	scoreW, companyW, roleW, statusW, whenW, pastW, inoteW, compW, likeW := m.pipelineColumnWidths()
+
+	scoreStr := strings.TrimSpace(app.ScoreRaw)
+	if scoreStr == "" {
+		scoreStr = fmt.Sprintf("%.1f", app.Score)
+	}
+	scoreLines := wrapCell(scoreStr, scoreW)
+	companyLines := wrapCell(app.Company, companyW)
+	roleLines := wrapCell(app.Role, roleW)
+
+	norm := data.NormalizeStatus(app.Status)
+	statusLbl := statusLabel(norm)
+	statusLines := wrapCell(statusLbl, statusW)
+
+	whenLines := wrapCell(app.InterviewSlot, whenW)
+
+	pastLabel := data.InterviewPastOrUpcoming(app.InterviewSlot, time.Now())
+	pastLines := wrapCell(pastLabel, pastW)
+
+	inotesLines := wrapCell(app.InterviewNotes, inoteW)
+
+	compStr := ""
+	if summary, ok := m.reportCache[app.ReportPath]; ok && summary.comp != "" {
+		compStr = summary.comp
+	}
+	compLines := wrapCell(compStr, compW)
+
+	likeStr := strings.TrimSpace(app.Likelihood)
+	if likeStr == "" {
+		likeStr = "—"
+	}
+	likeLines := wrapCell(likeStr, likeW)
+
+	maxH := len(scoreLines)
+	for _, n := range []int{len(companyLines), len(roleLines), len(statusLines), len(whenLines), len(pastLines), len(inotesLines), len(compLines), len(likeLines)} {
+		if n > maxH {
+			maxH = n
+		}
+	}
+	if maxH < 1 {
+		maxH = 1
+	}
+	scoreLines = padLineSlice(scoreLines, maxH)
+	companyLines = padLineSlice(companyLines, maxH)
+	roleLines = padLineSlice(roleLines, maxH)
+	statusLines = padLineSlice(statusLines, maxH)
+	whenLines = padLineSlice(whenLines, maxH)
+	pastLines = padLineSlice(pastLines, maxH)
+	inotesLines = padLineSlice(inotesLines, maxH)
+	compLines = padLineSlice(compLines, maxH)
+	likeLines = padLineSlice(likeLines, maxH)
+
+	scoreStyle := m.scoreStyle(app.Score)
+	statusColor, ok := m.statusColorMap()[norm]
+	if !ok {
+		statusColor = m.theme.Text
+	}
+	statusStyle := lipgloss.NewStyle().Foreground(statusColor)
+	companyStyle := lipgloss.NewStyle().Foreground(m.theme.Text)
+	roleStyle := lipgloss.NewStyle().Foreground(m.theme.Subtext)
+	whenStyle := lipgloss.NewStyle().Foreground(m.theme.Subtext)
+
+	pastColor := m.theme.Subtext
+	switch pastLabel {
+	case "Upcoming":
+		pastColor = m.theme.Yellow
+	case "?":
+		pastColor = m.theme.Red
+	}
+	pastStyle := lipgloss.NewStyle().Foreground(pastColor)
+	inoteStyle := lipgloss.NewStyle().Foreground(m.theme.Text)
+	compStyle := lipgloss.NewStyle().Foreground(m.theme.Yellow)
+
+	// Likelihood color: green ≥60%, yellow 30-59%, red <30%, dim for "—"
+	likeColor := m.theme.Subtext
+	if lk := strings.TrimSpace(app.Likelihood); lk != "" && lk != "—" {
+		if pct, err := strconv.Atoi(strings.TrimSuffix(lk, "%")); err == nil {
+			switch {
+			case pct >= 60:
+				likeColor = m.theme.Green
+			case pct >= 30:
+				likeColor = m.theme.Yellow
+			default:
+				likeColor = m.theme.Red
+			}
+		}
+	}
+	likeStyle := lipgloss.NewStyle().Foreground(likeColor)
+
+	out := make([]string, maxH)
+	for i := 0; i < maxH; i++ {
+		scoreCell := scoreStyle.Width(scoreW).Render(scoreLines[i])
+		companyCell := companyStyle.Width(companyW).Render(companyLines[i])
+		roleCell := roleStyle.Width(roleW).Render(roleLines[i])
+		statusCell := statusStyle.Width(statusW).Render(statusLines[i])
+		whenCell := whenStyle.Width(whenW).Render(whenLines[i])
+		pastCell := pastStyle.Width(pastW).Render(pastLines[i])
+		inoteCell := inoteStyle.Width(inoteW).Render(inotesLines[i])
+		compCell := compStyle.Width(compW).Render(compLines[i])
+		likeCell := likeStyle.Width(likeW).Render(likeLines[i])
+		out[i] = " " + strings.Join([]string{
+			scoreCell, companyCell, roleCell, statusCell, whenCell, pastCell, inoteCell, compCell, likeCell,
+		}, " ")
+	}
+	return out
+}
+
 func (m PipelineModel) renderAppLine(app model.CareerApplication, selected bool) string {
 	padStyle := lipgloss.NewStyle().Padding(0, 2)
+	selStyle := lipgloss.NewStyle().
+		Background(m.theme.Overlay).
+		Width(m.width - 4)
 
-	// Column widths
-	scoreW := 5   // "4.5  "
-	companyW := 20
-	statusW := 12
-	compW := 14
-	// Role gets remaining space
-	roleW := m.width - scoreW - companyW - statusW - compW - 10
-	if roleW < 15 {
-		roleW = 15
-	}
-
-	// Score with color
-	scoreStyle := m.scoreStyle(app.Score)
-	score := scoreStyle.Render(fmt.Sprintf("%.1f", app.Score))
-
-	// Company (truncate)
-	company := app.Company
-	if len(company) > companyW {
-		company = company[:companyW-3] + "..."
-	}
-	companyStyle := lipgloss.NewStyle().Foreground(m.theme.Text).Width(companyW)
-
-	// Role (truncate)
-	role := app.Role
-	if len(role) > roleW {
-		role = role[:roleW-3] + "..."
-	}
-	roleStyle := lipgloss.NewStyle().Foreground(m.theme.Subtext).Width(roleW)
-
-	// Status with color -- fixed column
-	norm := data.NormalizeStatus(app.Status)
-	statusColor := m.statusColorMap()[norm]
-	statusStyle := lipgloss.NewStyle().Foreground(statusColor).Width(statusW)
-	statusText := statusStyle.Render(statusLabel(norm))
-
-	// Comp from report cache -- fixed column
-	compText := ""
-	if summary, ok := m.reportCache[app.ReportPath]; ok && summary.comp != "" {
-		comp := summary.comp
-		if len(comp) > compW-1 {
-			comp = comp[:compW-4] + "..."
+	lines := m.pipelineAppVisualLines(app)
+	out := make([]string, len(lines))
+	for i, ln := range lines {
+		if selected {
+			out[i] = padStyle.Render(selStyle.Render(ln))
+		} else {
+			out[i] = padStyle.Render(ln)
 		}
-		compStyle := lipgloss.NewStyle().Foreground(m.theme.Yellow)
-		compText = compStyle.Render(comp)
 	}
-
-	line := fmt.Sprintf(" %s %s %s %s %s",
-		score,
-		companyStyle.Render(company),
-		roleStyle.Render(role),
-		statusText,
-		compText,
-	)
-
-	if selected {
-		selStyle := lipgloss.NewStyle().
-			Background(m.theme.Overlay).
-			Width(m.width - 4)
-		return padStyle.Render(selStyle.Render(line))
-	}
-	return padStyle.Render(line)
+	return strings.Join(out, "\n")
 }
 
 func (m PipelineModel) renderPreview() string {
@@ -729,8 +868,15 @@ func (m PipelineModel) renderPreview() string {
 			lines = append(lines, padStyle.Render(
 				labelStyle.Render("Remote: ")+valueStyle.Render(summary.remote)))
 		}
+		if app.Notes != "" {
+			notes := app.Notes
+			if len(notes) > m.width-12 {
+				notes = notes[:m.width-15] + "..."
+			}
+			lines = append(lines, padStyle.Render(
+				labelStyle.Render("Notes: ")+valueStyle.Render(notes)))
+		}
 	} else if app.Notes != "" {
-		// Fallback: show notes
 		notes := app.Notes
 		if len(notes) > m.width-10 {
 			notes = notes[:m.width-13] + "..."
@@ -738,6 +884,32 @@ func (m PipelineModel) renderPreview() string {
 		lines = append(lines, padStyle.Render(dimStyle.Render(notes)))
 	} else {
 		lines = append(lines, padStyle.Render(dimStyle.Render("Loading preview...")))
+	}
+
+	if app.InterviewSlot != "" {
+		lines = append(lines, padStyle.Render(
+			labelStyle.Render("Interview (ET): ")+valueStyle.Render(app.InterviewSlot)))
+		lines = append(lines, padStyle.Render(
+			labelStyle.Render("Meeting: ")+valueStyle.Render(data.InterviewPastOrUpcoming(app.InterviewSlot, time.Now()))))
+	}
+	if app.InterviewNotes != "" {
+		lines = append(lines, padStyle.Render(
+			labelStyle.Render("Who: ")+valueStyle.Render(app.InterviewNotes)))
+	}
+	if lk := strings.TrimSpace(app.Likelihood); lk != "" && lk != "—" {
+		likeLabel := labelStyle.Render("Likelihood: ")
+		likeVal := valueStyle.Render(lk)
+		if pct, err := strconv.Atoi(strings.TrimSuffix(lk, "%")); err == nil {
+			switch {
+			case pct >= 60:
+				likeVal = lipgloss.NewStyle().Foreground(m.theme.Green).Bold(true).Render(lk)
+			case pct >= 30:
+				likeVal = lipgloss.NewStyle().Foreground(m.theme.Yellow).Bold(true).Render(lk)
+			default:
+				likeVal = lipgloss.NewStyle().Foreground(m.theme.Red).Bold(true).Render(lk)
+			}
+		}
+		lines = append(lines, padStyle.Render(likeLabel+likeVal))
 	}
 
 	return strings.Join(lines, "\n")
@@ -826,10 +998,13 @@ func (m PipelineModel) scoreStyle(score float64) lipgloss.Style {
 
 func (m PipelineModel) statusColorMap() map[string]lipgloss.Color {
 	return map[string]lipgloss.Color{
-		"interview": m.theme.Green,
-		"offer":     m.theme.Green,
-		"applied":   m.theme.Sky,
-		"responded": m.theme.Blue,
+		"offer":    m.theme.Green,
+		"round_5":  m.theme.Green,
+		"round_4":  m.theme.Green,
+		"round_3":  m.theme.Yellow,
+		"round_2":  m.theme.Sky,
+		"round_1":  m.theme.Blue,
+		"applied":  m.theme.Sky,
 		"evaluated": m.theme.Text,
 		"skip":      m.theme.Red,
 		"rejected":  m.theme.Subtext,
@@ -849,12 +1024,18 @@ func (m PipelineModel) countByNormStatus(status string) int {
 
 func statusLabel(norm string) string {
 	switch norm {
-	case "interview":
-		return "Interview"
+	case "round_1":
+		return "Round 1"
+	case "round_2":
+		return "Round 2"
+	case "round_3":
+		return "Round 3"
+	case "round_4":
+		return "Round 4"
+	case "round_5":
+		return "Round 5"
 	case "offer":
 		return "Offer"
-	case "responded":
-		return "Responded"
 	case "applied":
 		return "Applied"
 	case "evaluated":

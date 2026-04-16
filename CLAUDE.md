@@ -25,6 +25,7 @@ AI-powered job search automation built on Claude Code: pipeline tracking, offer 
 | `article-digest.md` | Compact proof points from portfolio (optional) |
 | `interview-prep/story-bank.md` | Accumulated STAR+R stories across evaluations |
 | `reports/` | Evaluation reports (format: `{###}-{company-slug}-{YYYY-MM-DD}.md`) |
+| `transcripts/` | Interview transcripts (format: `{###}-{company-slug}-round-{N}-{YYYY-MM-DD}.md`) |
 
 ### First Run — Onboarding (IMPORTANT)
 
@@ -119,6 +120,7 @@ This system is designed to be customized by YOU (Claude). When the user asks you
 | Searches for new offers | `scan` |
 | Processes pending URLs | `pipeline` |
 | Batch processes offers | `batch` |
+| Pastes interview transcript | `transcript` |
 
 ### CV Source of Truth
 
@@ -157,6 +159,7 @@ This system is designed to be customized by YOU (Claude). When the user asks you
 - Output in `output/` (gitignored), Reports in `reports/`
 - JDs in `jds/` (referenced as `local:jds/{file}` in pipeline.md)
 - Batch in `batch/` (gitignored except scripts and prompt)
+- Transcripts in `transcripts/` (one file per interview round per application, format: `{###}-{slug}-round-{N}-{date}.md`)
 - Report numbering: sequential 3-digit zero-padded, max existing + 1
 - **RULE: After each batch of evaluations, run `node merge-tracker.mjs`** to merge tracker additions and avoid duplications.
 - **RULE: NEVER create new entries in applications.md if company+role already exists.** Update the existing entry.

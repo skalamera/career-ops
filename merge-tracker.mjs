@@ -28,7 +28,12 @@ const DRY_RUN = process.argv.includes('--dry-run');
 const VERIFY = process.argv.includes('--verify');
 
 // Canonical states and aliases — English labels per states.yml
-const CANONICAL_STATES = ['Evaluated', 'Applied', 'Responded', 'Interview', 'Offer', 'Rejected', 'Discarded', 'SKIP'];
+const CANONICAL_STATES = [
+  'Evaluated', 'Applied', 'Responded', 'Offer', 'Rejected', 'Discarded', 'SKIP',
+  'Round 1', 'Round 2', 'Round 3', 'Round 4', 'Round 5',
+  // Legacy (normalized on merge)
+  'Interview', 'Initial Meeting Scheduled',
+];
 
 function validateStatus(status) {
   const clean = status.replace(/\*\*/g, '').replace(/\s+\d{4}-\d{2}-\d{2}.*$/, '').trim();
@@ -37,6 +42,9 @@ function validateStatus(status) {
   for (const valid of CANONICAL_STATES) {
     if (valid.toLowerCase() === lower) return valid;
   }
+
+  if (lower === 'interview') return 'Round 1';
+  if (lower === 'initial meeting scheduled') return 'Round 1';
 
   // Aliases (Spanish → English, and common variants)
   const aliases = {
@@ -50,8 +58,8 @@ function validateStatus(status) {
     'cancelada': 'Discarded',
     // Rejected
     'rechazado': 'Rejected', 'rechazada': 'Rejected',
-    // Interview
-    'entrevista': 'Interview',
+    // Interview → Round 1
+    'entrevista': 'Round 1',
     // Responded
     'respondido': 'Responded',
     // SKIP
@@ -73,8 +81,10 @@ function normalizeCompany(name) {
 }
 
 function roleFuzzyMatch(a, b) {
-  const wordsA = a.toLowerCase().split(/\s+/).filter(w => w.length > 3);
-  const wordsB = b.toLowerCase().split(/\s+/).filter(w => w.length > 3);
+  const stopWords = new Set(['manager', 'director', 'senior', 'lead', 'operations', 'engineer', 'specialist', 'analyst', 'associate', 'coordinator', 'head', 'vice', 'president', 'principal', 'staff', 'junior', 'chief']);
+  const wordsA = a.toLowerCase().split(/\s+/).filter(w => w.length > 3 && !stopWords.has(w));
+  const wordsB = b.toLowerCase().split(/\s+/).filter(w => w.length > 3 && !stopWords.has(w));
+  if (wordsA.length === 0 || wordsB.length === 0) return false;
   const overlap = wordsA.filter(w => wordsB.some(wb => wb.includes(w) || w.includes(wb)));
   return overlap.length >= 2;
 }
@@ -94,11 +104,12 @@ function parseAppLine(line) {
   if (parts.length < 9) return null;
   const num = parseInt(parts[1]);
   if (isNaN(num) || num === 0) return null;
-  return {
-    num, date: parts[2], company: parts[3], role: parts[4],
-    score: parts[5], status: parts[6], pdf: parts[7], report: parts[8],
-    notes: parts[9] || '', raw: line,
-  };
+    return {
+      num, date: parts[2], company: parts[3], role: parts[4],
+      score: parts[5], status: parts[6], pdf: parts[7], report: parts[8],
+      notes: parts[9] || '', interview: parts[10] || '', interviewNotes: parts[11] || '',
+      likelihood: parts[12] || '', raw: line,
+    };
 }
 
 /**
@@ -145,8 +156,8 @@ function parseTsvContent(content, filename) {
     const col5 = parts[5].trim();
     const col4LooksLikeScore = /^\d+\.?\d*\/5$/.test(col4) || col4 === 'N/A' || col4 === 'DUP';
     const col5LooksLikeScore = /^\d+\.?\d*\/5$/.test(col5) || col5 === 'N/A' || col5 === 'DUP';
-    const col4LooksLikeStatus = /^(evaluada|aplicado|respondido|entrevista|oferta|rechazado|descartado|no aplicar|cerrada|duplicado|repost|condicional|hold|monitor)/i.test(col4);
-    const col5LooksLikeStatus = /^(evaluada|aplicado|respondido|entrevista|oferta|rechazado|descartado|no aplicar|cerrada|duplicado|repost|condicional|hold|monitor)/i.test(col5);
+    const col4LooksLikeStatus = /^(evaluada|aplicado|respondido|entrevista|oferta|rechazado|descartado|no aplicar|cerrada|duplicado|repost|condicional|hold|monitor|round\s*[1-5])/i.test(col4);
+    const col5LooksLikeStatus = /^(evaluada|aplicado|respondido|entrevista|oferta|rechazado|descartado|no aplicar|cerrada|duplicado|repost|condicional|hold|monitor|round\s*[1-5])/i.test(col5);
 
     let statusCol, scoreCol;
     if (col4LooksLikeStatus && !col4LooksLikeScore) {
@@ -275,7 +286,7 @@ for (const file of tsvFiles) {
       console.log(`🔄 Update: #${duplicate.num} ${addition.company} — ${addition.role} (${oldScore}→${newScore})`);
       const lineIdx = appLines.indexOf(duplicate.raw);
       if (lineIdx >= 0) {
-        const updatedLine = `| ${duplicate.num} | ${addition.date} | ${addition.company} | ${addition.role} | ${addition.score} | ${duplicate.status} | ${duplicate.pdf} | ${addition.report} | Re-eval ${addition.date} (${oldScore}→${newScore}). ${addition.notes} |`;
+        const updatedLine = `| ${duplicate.num} | ${addition.date} | ${addition.company} | ${addition.role} | ${addition.score} | ${duplicate.status} | ${duplicate.pdf} | ${addition.report} | Re-eval ${addition.date} (${oldScore}→${newScore}). ${addition.notes} | | | ${duplicate.likelihood || '—'} |`;
         appLines[lineIdx] = updatedLine;
         updated++;
       }
@@ -288,7 +299,7 @@ for (const file of tsvFiles) {
     const entryNum = addition.num > maxNum ? addition.num : ++maxNum;
     if (addition.num > maxNum) maxNum = addition.num;
 
-    const newLine = `| ${entryNum} | ${addition.date} | ${addition.company} | ${addition.role} | ${addition.score} | ${addition.status} | ${addition.pdf} | ${addition.report} | ${addition.notes} |`;
+    const newLine = `| ${entryNum} | ${addition.date} | ${addition.company} | ${addition.role} | ${addition.score} | ${addition.status} | ${addition.pdf} | ${addition.report} | ${addition.notes} | | | — |`;
     newLines.push(newLine);
     added++;
     console.log(`➕ Add #${entryNum}: ${addition.company} — ${addition.role} (${addition.score})`);

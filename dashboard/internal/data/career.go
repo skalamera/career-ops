@@ -133,6 +133,15 @@ func ParseApplications(careerOpsPath string) []model.CareerApplication {
 		if len(fields) > 8 {
 			app.Notes = fields[8]
 		}
+		if len(fields) > 9 {
+			app.InterviewSlot = fields[9]
+		}
+		if len(fields) > 10 {
+			app.InterviewNotes = fields[10]
+		}
+		if len(fields) > 11 {
+			app.Likelihood = fields[11]
+		}
 
 		apps = append(apps, app)
 	}
@@ -510,12 +519,25 @@ func NormalizeStatus(raw string) string {
 	// Most restrictive first — accepts both English and Spanish
 	case strings.Contains(s, "no aplicar") || strings.Contains(s, "no_aplicar") || s == "skip" || strings.Contains(s, "geo blocker"):
 		return "skip"
-	case strings.Contains(s, "interview") || strings.Contains(s, "entrevista"):
-		return "interview"
+	case strings.Contains(s, "round 5") || s == "round_5":
+		return "round_5"
+	case strings.Contains(s, "round 4") || s == "round_4":
+		return "round_4"
+	case strings.Contains(s, "round 3") || s == "round_3":
+		return "round_3"
+	case strings.Contains(s, "round 2") || s == "round_2":
+		return "round_2"
+	case strings.Contains(s, "round 1") || s == "round_1":
+		return "round_1"
 	case s == "offer" || strings.Contains(s, "oferta"):
 		return "offer"
+	// Legacy interview funnel (map to rounds until tracker is updated)
+	case strings.Contains(s, "interview") || strings.Contains(s, "entrevista"):
+		return "round_1"
+	case strings.Contains(s, "initial meeting") || strings.Contains(s, "initial_meeting"):
+		return "round_1"
 	case strings.Contains(s, "responded") || strings.Contains(s, "respondido"):
-		return "responded"
+		return "round_1"
 	case strings.Contains(s, "applied") || strings.Contains(s, "aplicado") || s == "enviada" || s == "aplicada" || s == "sent":
 		return "applied"
 	case strings.Contains(s, "rejected") || strings.Contains(s, "rechazado") || s == "rechazada":
@@ -573,7 +595,11 @@ func UpdateApplicationStatus(careerOpsPath string, app model.CareerApplication, 
 	filePath := filepath.Join(careerOpsPath, "applications.md")
 	content, err := os.ReadFile(filePath)
 	if err != nil {
-		return err
+		filePath = filepath.Join(careerOpsPath, "data", "applications.md")
+		content, err = os.ReadFile(filePath)
+		if err != nil {
+			return err
+		}
 	}
 
 	lines := strings.Split(string(content), "\n")
@@ -615,23 +641,29 @@ func cleanTableCell(s string) string {
 // StatusPriority returns the sort priority for a status (lower = higher priority).
 func StatusPriority(status string) int {
 	switch NormalizeStatus(status) {
-	case "interview":
-		return 0
 	case "offer":
+		return 0
+	case "round_5":
 		return 1
-	case "responded":
+	case "round_4":
 		return 2
-	case "applied":
+	case "round_3":
 		return 3
-	case "evaluated":
+	case "round_2":
 		return 4
-	case "skip":
+	case "round_1":
 		return 5
-	case "rejected":
+	case "applied":
 		return 6
-	case "discarded":
+	case "evaluated":
 		return 7
-	default:
+	case "skip":
 		return 8
+	case "rejected":
+		return 9
+	case "discarded":
+		return 10
+	default:
+		return 11
 	}
 }

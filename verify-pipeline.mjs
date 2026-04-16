@@ -31,6 +31,10 @@ const STATES_FILE = existsSync(join(CAREER_OPS, 'templates/states.yml'))
 const CANONICAL_STATUSES = [
   'evaluada', 'aplicado', 'respondido', 'entrevista',
   'oferta', 'rechazado', 'descartado', 'no aplicar',
+  // English (templates/states.yml labels)
+  'evaluated', 'applied', 'offer', 'rejected', 'discarded', 'skip',
+  'round 1', 'round 2', 'round 3', 'round 4', 'round 5',
+  'interview', 'initial meeting scheduled',
 ];
 
 const ALIASES = {
@@ -38,6 +42,7 @@ const ALIASES = {
   'cerrada': 'descartado', 'descartada': 'descartado', 'cancelada': 'descartado',
   'rechazada': 'rechazado',
   'no_aplicar': 'no aplicar', 'skip': 'no aplicar', 'monitor': 'no aplicar',
+  'responded': 'round 1',
 };
 
 let errors = 0;
@@ -132,7 +137,7 @@ if (brokenReports === 0) ok('All report links valid');
 let badScores = 0;
 for (const e of entries) {
   const s = e.score.replace(/\*\*/g, '').trim();
-  if (!/^\d+\.?\d*\/5$/.test(s) && s !== 'N/A' && s !== 'DUP') {
+  if (!/^\d+\.?\d*\/5$/.test(s) && s !== 'N/A' && s !== 'DUP' && s !== '—') {
     error(`#${e.num}: Invalid score format: "${e.score}"`);
     badScores++;
   }
@@ -163,7 +168,23 @@ if (existsSync(ADDITIONS_DIR)) {
 }
 if (pendingTsvs === 0) ok('No pending TSVs');
 
-// --- Check 7: Bold in scores ---
+// --- Check 7: Likelihood format ---
+let badLikelihood = 0;
+for (const line of lines) {
+  if (!line.startsWith('|')) continue;
+  if (line.includes('---') || line.includes('Likelihood')) continue;
+  const parts = line.split('|').map(s => s.trim());
+  if (parts.length >= 13) {
+    const lk = parts[12];
+    if (lk && lk !== '—' && !/^\d{1,3}%$/.test(lk)) {
+      error(`Likelihood bad format: "${lk}" in row starting with ${parts[1]}`);
+      badLikelihood++;
+    }
+  }
+}
+if (badLikelihood === 0) ok('All Likelihood values valid');
+
+// --- Check 8: Bold in scores ---
 let boldScores = 0;
 for (const e of entries) {
   if (e.score.includes('**')) {

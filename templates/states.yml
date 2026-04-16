@@ -19,17 +19,35 @@ states:
     description: Application submitted
     dashboard_group: applied
 
-  - id: responded
-    label: Responded
-    aliases: [respondido]
-    description: Company has responded (not yet interview)
-    dashboard_group: responded
+  - id: round_1
+    label: Round 1
+    aliases: [responded, respondido, initial meeting scheduled, initial_meeting_scheduled]
+    description: First interview round (replaces initial meeting / generic interview)
+    dashboard_group: round_1
 
-  - id: interview
-    label: Interview
-    aliases: [entrevista]
-    description: Active interview process
-    dashboard_group: interview
+  - id: round_2
+    label: Round 2
+    aliases: []
+    description: Second interview round
+    dashboard_group: round_2
+
+  - id: round_3
+    label: Round 3
+    aliases: []
+    description: Third interview round
+    dashboard_group: round_3
+
+  - id: round_4
+    label: Round 4
+    aliases: []
+    description: Fourth interview round
+    dashboard_group: round_4
+
+  - id: round_5
+    label: Round 5
+    aliases: []
+    description: Fifth interview round
+    dashboard_group: round_5
 
   - id: offer
     label: Offer
